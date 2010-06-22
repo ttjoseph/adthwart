@@ -394,7 +394,7 @@ var requestDispatchTable = {
                 shouldInject = false;
         }
         var beforeloadBlocking = localStorage["beforeloadBlocking"] == "true";
-        sendResponse({selectors: selectors, enabled: enabled, shouldInject: shouldInject, beforeloadBlocking: beforeloadBlocking, TEMP_adservers: beforeloadBlocking ? TEMP_adservers : null, abp: JSON.stringify(abp)});
+        sendResponse({selectors: selectors, enabled: enabled, shouldInject: shouldInject, beforeloadBlocking: beforeloadBlocking, TEMP_adservers: beforeloadBlocking ? TEMP_adservers : null, bm: JSON.stringify(abp.blacklistMatcher), wm: JSON.stringify(abp.whitelistMatcher)});
     },
     "get-localstorage-option": function(request, sender, sendResponse) {
         sendResponse({value: localStorage[request.name]});

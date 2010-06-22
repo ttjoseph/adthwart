@@ -18,7 +18,7 @@ var TagToType = {
     "IFRAME": TypeMap.SUBDOCUMENT
 };
 
-var abp = null; // AdBlock Plus data parent variable
+var abp = {}; // AdBlock Plus data parent variable
 var elemhideSelectorStrings = []; // Cache the elemhide selector strings
 var SELECTOR_GROUP_SIZE = 20;
 var FLASH_SELECTORS = 'embed[type*="application/x-shockwave-flash"],embed[src*=".swf"],object[type*="application/x-shockwave-flash"],object[codetype*="application/x-shockwave-flash"],object[src*=".swf"],object[codebase*="swflash.cab"],object[classid*="D27CDB6E-AE6D-11cf-96B8-444553540000"],object[classid*="d27cdb6e-ae6d-11cf-96b8-444553540000"]';
@@ -111,7 +111,8 @@ if (document instanceof HTMLDocument) {
             // Because we are in an asynchronous callback, the page may be partially loaded before
             // the event handler gets attached. So some things might get through at the beginning.
             if(response.beforeloadBlocking) {
-                abp = JSON.parse(response.abp);
+                abp.blacklistMatcher = JSON.parse(response.bm);
+                abp.whitelistMatcher = JSON.parse(response.wm);
                 TEMP_adservers = response.TEMP_adservers;
                 document.addEventListener("beforeload", function (e) {
                     var eltDomain = TEMP_extractDomainFromURL(e.url);
