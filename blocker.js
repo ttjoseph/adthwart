@@ -549,9 +549,10 @@ if (document instanceof HTMLDocument) {
                 var elt = document.getElementById("movie_player");
                 handleYouTubeFlashPlayer(elt);
             }        
-
+            
+            // Nuke any ads the beforeload handler didn't catch
+            nukeElements();
             document.addEventListener("DOMNodeInserted", handleNodeInserted, false);
-            removeInitialBlockStylesheet();
         }
     });
 
