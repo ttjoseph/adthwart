@@ -550,9 +550,8 @@ if (document instanceof HTMLDocument) {
                 handleYouTubeFlashPlayer(elt);
             }        
 
-            // Nuke ads by src. This will also cause removal of initial-block stylesheet.
-            // nukeElements(document);
             document.addEventListener("DOMNodeInserted", handleNodeInserted, false);
+            removeInitialBlockStylesheet();
         }
     });
 

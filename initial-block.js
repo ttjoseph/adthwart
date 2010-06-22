@@ -102,7 +102,7 @@ if (document instanceof HTMLDocument) {
                 // rest of the Internet - and YouTube's old design - seem to be OK, though, so I dunno.
                 styleElm.innerText += FLASH_SELECTORS + " { display: none !important } ";
             }
-            styleElm.innerText += "iframe { visibility: hidden !important } ";
+            styleElm.innerText += "iframe { visibility: hidden !important; background: blue; } ";
             styleElm.innerText += getElemhideCSSString();
             if(response.shouldInject)
     	        document.documentElement.insertBefore(styleElm, null);
@@ -121,12 +121,14 @@ if (document instanceof HTMLDocument) {
                         e.preventDefault();
                     } else {
                         var thirdParty = !(document.domain === eltDomain);
-                        if(Matcher_matchesAny(abp.whitelistMatcher, e.url, TagToType[e.target.tagName], document.domain, thirdParty))
+                        var type = TagToType[e.target.tagName];
+                        if(Matcher_matchesAny(abp.whitelistMatcher, e.url, type, document.domain, thirdParty))
                             return;
-                        var x = Matcher_matchesAny(abp.blacklistMatcher, e.url, TagToType[e.target.tagName], document.domain, thirdParty);
+                        var x = Matcher_matchesAny(abp.blacklistMatcher, e.url, type, document.domain, thirdParty);
                         if(x) {
                             console.log("Blocked", e.url);
                             e.preventDefault();
+                            nukeSingleElement(e.target);
                         }
                         
                         // // If it isn't a known ad server, we have to ask the backend, which won't

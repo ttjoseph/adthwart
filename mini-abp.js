@@ -23,7 +23,8 @@
  *
  * ***** END LICENSE BLOCK ***** */
  
- // These are functions extracted from AdBlock Plus for use in content scripts.
+// These are functions extracted from AdBlock Plus for use in content scripts.
+// Please see the original functions for explanations about what they are doing.
 
 var MAX_CACHE_ENTRIES = 1000;
 var SHORTCUT_LENGTH = 8;
@@ -38,8 +39,7 @@ function Filter_isActiveOnDomain(me, docDomain) {
 
   docDomain = docDomain.replace(/\.+$/, "").toUpperCase();
 
-  while (true)
-  {
+  while (true) {
     if (me.includeDomains && docDomain in me.includeDomains)
       return true;
     if (me.excludeDomains && docDomain in me.excludeDomains)
@@ -60,7 +60,7 @@ function Filter_matches(me, location, contentType, docDomain, thirdParty)
     }
     var x = (me.regexp.test(location) &&
 //            (RegExpFilter.typeMap[contentType] & me.contentType) != 0 &&
-        // (contentType & me.contentType) != 0 && // Avoid a string-indexed lookup
+        (!contentType || (contentType & me.contentType) != 0) && // Avoid a string-indexed lookup
         (me.thirdParty == null || me.thirdParty == thirdParty) &&
         Filter_isActiveOnDomain(docDomain));
     //
@@ -94,9 +94,6 @@ function Matcher_matchesAnyInternal(me, location, contentType, docDomain, thirdP
 
     return null;
 }
- 
- 
-// blacklistMatcher.matchesAny(request.url, request.type, request.domain, thirdParty)
  
 function Matcher_matchesAny(me, location, contentType, docDomain, thirdParty) {
     var key = location + " " + contentType + " " + docDomain + " " + thirdParty;
