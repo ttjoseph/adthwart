@@ -346,6 +346,7 @@ function RegExpFilter(text, regexp, contentType, matchCase, domains, thirdParty)
     this.thirdParty = thirdParty;
 
   this.regexp = new RegExp(regexp, this.matchCase ? "" : "i");
+  this.regexpSource = this.regexp.source;
 }
 RegExpFilter.prototype =
 {

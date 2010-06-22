@@ -335,7 +335,7 @@ function removeAdsAgain() {
         // Retrieve new set of selectors and build selector strings
         makeSelectorStrings(response.selectors);
         hideBySelectorStrings(document);
-        nukeElements(document);
+        // nukeElements(document); // Would have been caught by beforeload handler
     });
 }
 
@@ -343,7 +343,7 @@ function removeAdsAgain() {
 function handleNodeInserted(e) {
     // Remove ads relatively infrequently. If no timeout set, set one.
     if(enabled) {
-//        if(nukeElementsTimeoutID == 0)
+//        if(nukeElementsTimeoutID == 0) // This should be caught by beforeload handler
 //            nukeElementsTimeoutID = setTimeout(nukeElements, (Date.now() - nukeElementsLastTime > 1000) ? 1 : 1000);
     
         if(pageIsYouTube && e.target.id == "movie_player") {
@@ -551,17 +551,20 @@ if (document instanceof HTMLDocument) {
             }        
 
             // Nuke ads by src. This will also cause removal of initial-block stylesheet.
-            nukeElements(document);
+            // nukeElements(document);
             document.addEventListener("DOMNodeInserted", handleNodeInserted, false);
         }
     });
 
     // Nuke background if it's an ad
-    var bodyBackground = getComputedStyle(document.body).getPropertyValue("background-image");
-    if(bodyBackground && bodyBackground.substr(0, 4) == "url(") {
-        bodyBackground = bodyBackground.substr(4, bodyBackground.length-5);
-        chrome.extension.sendRequest({reqtype: "should-block?", type: TypeMap.BACKGROUND, url: bodyBackground}, function(response) {
-            document.body.style.setProperty("background-image", "none");
-        });
+    var s = getComputedStyle(document.body);
+    if(s) {
+        var bodyBackground = s.getPropertyValue("background-image");
+        if(bodyBackground && bodyBackground.substr(0, 4) == "url(") {
+            bodyBackground = bodyBackground.substr(4, bodyBackground.length-5);
+            chrome.extension.sendRequest({reqtype: "should-block?", type: TypeMap.BACKGROUND, url: bodyBackground}, function(response) {
+                document.body.style.setProperty("background-image", "none");
+            });
+        }
     }
 }

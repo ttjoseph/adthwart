@@ -22,7 +22,7 @@
 	"content_scripts": [
 	{
  		"matches": ["http://*/*", "https://*/*"],
-		"js": ["initial-block.js"],
+		"js": ["mini_abp.js", "initial-block.js"],
 		"run_at": "document_start",
 		"all_frames": true
 	},
