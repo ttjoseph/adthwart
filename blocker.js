@@ -550,21 +550,22 @@ if (document instanceof HTMLDocument) {
                 handleYouTubeFlashPlayer(elt);
             }        
             
+            // Nuke background if it's an ad
+            var s = getComputedStyle(document.body);
+            if(s) {
+                var bodyBackground = s.getPropertyValue("background-image");
+                if(bodyBackground && bodyBackground.substr(0, 4) == "url(") {
+                    bodyBackground = bodyBackground.substr(4, bodyBackground.length-5);
+                    chrome.extension.sendRequest({reqtype: "should-block?", type: TypeMap.BACKGROUND, url: bodyBackground}, function(response) {
+                        document.body.style.setProperty("background-image", "none");
+                    });
+                }
+            }
+
             // Nuke any ads the beforeload handler didn't catch
             nukeElements();
             document.addEventListener("DOMNodeInserted", handleNodeInserted, false);
         }
     });
 
-    // Nuke background if it's an ad
-    var s = getComputedStyle(document.body);
-    if(s) {
-        var bodyBackground = s.getPropertyValue("background-image");
-        if(bodyBackground && bodyBackground.substr(0, 4) == "url(") {
-            bodyBackground = bodyBackground.substr(4, bodyBackground.length-5);
-            chrome.extension.sendRequest({reqtype: "should-block?", type: TypeMap.BACKGROUND, url: bodyBackground}, function(response) {
-                document.body.style.setProperty("background-image", "none");
-            });
-        }
-    }
 }
