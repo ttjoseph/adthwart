@@ -106,42 +106,37 @@ if (document instanceof HTMLDocument) {
             styleElm.innerText += getElemhideCSSString();
             if(response.shouldInject)
     	        document.documentElement.insertBefore(styleElm, null);
+	    }
+    });
 
-            // HACK to hopefully block stuff on beforeload event.
-            // Because we are in an asynchronous callback, the page may be partially loaded before
-            // the event handler gets attached. So some things might get through at the beginning.
-            if(response.beforeloadBlocking) {
-                abp.blacklistMatcher = JSON.parse(response.bm);
-                abp.whitelistMatcher = JSON.parse(response.wm);
-                TEMP_adservers = response.TEMP_adservers;
-                document.addEventListener("beforeload", function (e) {
-                    var eltDomain = TEMP_extractDomainFromURL(e.url);
-                    // Primitive version of third-party check
-                    if(eltDomain && !TEMP_isAdServer(document.domain) && TEMP_isAdServer(eltDomain)) {
+    // We break this out into a "parallel" request in the hope it will get done faster
+    chrome.extension.sendRequest({reqtype: "get-beforeload-options"}, function(response) {
+        // HACK to hopefully block stuff on beforeload event.
+        // Because we are in an asynchronous callback, the page may be partially loaded before
+        // the event handler gets attached. So some things might get through at the beginning.
+        if(response.enabled && response.beforeloadBlocking) {
+            abp.blacklistMatcher = JSON.parse(response.bm);
+            abp.whitelistMatcher = JSON.parse(response.wm);
+            TEMP_adservers = response.TEMP_adservers;
+            document.addEventListener("beforeload", function (e) {
+                var eltDomain = TEMP_extractDomainFromURL(e.url);
+                // Primitive version of third-party check
+                if(eltDomain && !TEMP_isAdServer(document.domain) && TEMP_isAdServer(eltDomain)) {
+                    e.preventDefault();
+                    nukeSingleElement(e.target);
+                } else {
+                    var thirdParty = !(document.domain === eltDomain);
+                    var type = TagToType[e.target.tagName];
+                    if(Matcher_matchesAny(abp.whitelistMatcher, e.url, type, document.domain, thirdParty))
+                        return;
+                    var x = Matcher_matchesAny(abp.blacklistMatcher, e.url, type, document.domain, thirdParty);
+                    if(x) {
+                        console.log("Blocked", e.url);
                         e.preventDefault();
-                        if(e.target) nukeSingleElement(e.target);
-                    } else {
-                        var thirdParty = !(document.domain === eltDomain);
-                        var type = TagToType[e.target.tagName];
-                        if(Matcher_matchesAny(abp.whitelistMatcher, e.url, type, document.domain, thirdParty))
-                            return;
-                        var x = Matcher_matchesAny(abp.blacklistMatcher, e.url, type, document.domain, thirdParty);
-                        if(x) {
-                            console.log("Blocked", e.url);
-                            e.preventDefault();
-                            nukeSingleElement(e.target);
-                        }
-                        
-                        // // If it isn't a known ad server, we have to ask the backend, which won't
-                        // // return in time for preventDefault().
-                        // chrome.extension.sendRequest({reqtype: "should-block?", url: e.url, type: TagToType[e.target.tagName], domain: document.domain}, function(response) {
-                        //     if(response.block) {
-                        //         nukeSingleElement(e.target);
-                        //     }
-                        // });
+                        nukeSingleElement(e.target);
                     }
-                }, true);
-            }
+                }
+            }, true);
         }
     });
 }
