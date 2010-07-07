@@ -496,7 +496,8 @@ function handleYouTubeFlashPlayer(elt) {
     		// the timeout and another video would have been inserted.
     		// This results in the wrong (first) video being shown, but it's better
     		// than two videos at once.
-    		if (parent.firstChild) parent.innerHTML = "";
+    		while(parent.firstChild)
+    		    parent.removeChild(parent.firstChild);
         	parent.appendChild(replacement);
         	pageIsYouTube = true;
         }, 200, parent, replacement);
@@ -565,6 +566,15 @@ if (document instanceof HTMLDocument) {
             // Nuke any ads the beforeload handler didn't catch
             nukeElements();
             document.addEventListener("DOMNodeInserted", handleNodeInserted, false);
+
+            // Nuke background if it's an ad
+            var bodyBackground = getComputedStyle(document.body).getPropertyValue("background-image");
+            if(bodyBackground && bodyBackground.substr(0, 4) == "url(") {
+                bodyBackground = bodyBackground.substr(4, bodyBackground.length-5);
+                chrome.extension.sendRequest({reqtype: "should-block?", type: TypeMap.BACKGROUND, url: bodyBackground}, function(response) {
+                    document.body.style.setProperty("background-image", "none");
+                });
+            }
         }
     });
 

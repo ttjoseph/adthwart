@@ -119,6 +119,7 @@ if (document instanceof HTMLDocument) {
                     // Primitive version of third-party check
                     if(eltDomain && !TEMP_isAdServer(document.domain) && TEMP_isAdServer(eltDomain)) {
                         e.preventDefault();
+                        if(e.target) nukeSingleElement(e.target);
                     } else {
                         var thirdParty = !(document.domain === eltDomain);
                         var type = TagToType[e.target.tagName];
