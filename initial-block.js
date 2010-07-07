@@ -1,5 +1,30 @@
-// This file (c) T. Joseph <ttjoseph@gmail.com>
-// Everyone can use, modify and distribute this file without restriction.
+/* ***** BEGIN LICENSE BLOCK *****
+ * Version: MPL 1.1
+ *
+ * The contents of this file (up to the line below) are subject to the Mozilla
+ * Public License Version 1.1 (the "License"); you may not use this code except
+ * in compliance with the License. You may obtain a copy of the License at
+ * http://www.mozilla.org/MPL/
+ *
+ * Software distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
+ * for the specific language governing rights and limitations under the
+ * License.
+ *
+ * The Original Code is Adblock Plus.
+ *
+ * The Initial Developer of the Original Code is
+ * Wladimir Palant.
+ * Portions created by the Initial Developer are Copyright (C) 2006-2009
+ * the Initial Developer. All Rights Reserved.
+ *
+ * Contributor(s):
+ * T. Joseph <ttjoseph@gmail.com>
+ *
+ * ***** END LICENSE BLOCK ***** */
+ 
+// These are functions extracted from AdBlock Plus for use in content scripts.
+// Please see the original functions for explanations about what they are doing.
 
 // ABP content type flags
 var TypeMap = {
@@ -17,6 +42,101 @@ var TagToType = {
     "EMBED": TypeMap.OBJECT,
     "IFRAME": TypeMap.SUBDOCUMENT
 };
+
+var MAX_CACHE_ENTRIES = 1000;
+var SHORTCUT_LENGTH = 8;
+
+function Filter_isActiveOnDomain(me, docDomain) {
+  // If the document has no host name, match only if the filter isn't restricted to specific domains
+  if (!docDomain)
+    return (!me.includeDomains);
+
+  if (!me.includeDomains && !me.excludeDomains)
+    return true;
+
+  docDomain = docDomain.replace(/\.+$/, "").toUpperCase();
+
+  while (true) {
+    if (me.includeDomains && docDomain in me.includeDomains)
+      return true;
+    if (me.excludeDomains && docDomain in me.excludeDomains)
+      return false;
+
+    var nextDot = docDomain.indexOf(".");
+    if (nextDot < 0)
+      break;
+    docDomain = docDomain.substr(nextDot + 1);
+  }
+  return (me.includeDomains == null);
+}
+
+function Filter_matches(me, location, contentType, docDomain, thirdParty)
+{
+    if(!me.regexp) {
+        me.regexp = new RegExp(me.regexpSource, me.matchCase ? "" : "i");
+    }
+    var x = (me.regexp.test(location) &&
+//            (RegExpFilter.typeMap[contentType] & me.contentType) != 0 &&
+        (!contentType || (contentType & me.contentType) != 0) && // Avoid a string-indexed lookup
+        (me.thirdParty == null || me.thirdParty == thirdParty) &&
+        Filter_isActiveOnDomain(docDomain));
+    //
+    return x;
+}
+
+ 
+function Matcher_matchesAnyInternal(me, location, contentType, docDomain, thirdParty) {
+    if (me.hasShortcuts) {
+        // Optimized matching using shortcuts
+        var text = location.toLowerCase();
+        var len = SHORTCUT_LENGTH;
+        var endPos = text.length - len + 1;
+        for (var i = 0; i <= endPos; i++) {
+            var substr = text.substr(i, len);
+            if (substr in me.shortcutHash) {
+                var filter = me.shortcutHash[substr];
+                if (Filter_matches(filter, location, contentType, docDomain, thirdParty)) {
+                    return filter;
+                }
+            }
+        }
+    }
+
+    // Slow matching for filters without shortcut
+    for (i in me.regexps) {
+       var filter = me.regexps[i];
+       if (Filter_matches(filter, location, contentType, docDomain, thirdParty))
+           return filter;
+    }
+
+    return null;
+}
+ 
+function Matcher_matchesAny(me, location, contentType, docDomain, thirdParty) {
+    var key = location + " " + contentType + " " + docDomain + " " + thirdParty;
+    
+    if (key in me.resultCache) {
+        return me.resultCache[key];
+    }
+
+    var result = Matcher_matchesAnyInternal(me, location, contentType, docDomain, thirdParty);
+
+    if (me.cacheEntries >= MAX_CACHE_ENTRIES) {
+        me.resultCache = {__proto__: null};
+        me.cacheEntries = 0;
+    }
+
+    me.resultCache[key] = result;
+    me.cacheEntries++;
+
+    return result;
+}
+
+// End MPL-licensed source code
+// =====================================================
+
+// The part of this file below (c) T. Joseph <ttjoseph@gmail.com>
+// Everyone can use, modify and distribute this code without restriction.
 
 var abp = {}; // AdBlock Plus data parent variable
 var elemhideSelectorStrings = []; // Cache the elemhide selector strings
@@ -45,6 +165,7 @@ function getElemhideCSSString() {
 
 // Remove a particular element.
 function nukeSingleElement(elt) {
+    // console.log("Nuking", elt);
     if(elt.innerHTML) elt.innerHTML = "";
     if(elt.innerText) elt.innerText = "";
     elt.style.display = "none";
@@ -94,7 +215,7 @@ if (document instanceof HTMLDocument) {
 
     chrome.extension.sendRequest({reqtype: "get-initialhide-options"}, function(response) {
         makeSelectorStrings(response.selectors);
-        if(response.enabled) {
+        if(response.enabled && response.shouldInject) {
             if(!document.domain.match(/youtube.com$/i)) {
                 // XXX: YouTube's new design apparently doesn't load the movie player if we hide it.
                 // I'm guessing Chrome doesn't bother to load the Flash object if it isn't displayed,
@@ -102,10 +223,9 @@ if (document instanceof HTMLDocument) {
                 // rest of the Internet - and YouTube's old design - seem to be OK, though, so I dunno.
                 styleElm.innerText += FLASH_SELECTORS + " { display: none !important } ";
             }
-            styleElm.innerText += "iframe { visibility: hidden !important; background: blue; } ";
+            styleElm.innerText += "iframe { visibility: hidden !important; } ";
             styleElm.innerText += getElemhideCSSString();
-            if(response.shouldInject)
-    	        document.documentElement.insertBefore(styleElm, null);
+	        document.documentElement.insertBefore(styleElm, null);
 	    }
     });
 
@@ -129,9 +249,7 @@ if (document instanceof HTMLDocument) {
                     var type = TagToType[e.target.tagName];
                     if(Matcher_matchesAny(abp.whitelistMatcher, e.url, type, document.domain, thirdParty))
                         return;
-                    var x = Matcher_matchesAny(abp.blacklistMatcher, e.url, type, document.domain, thirdParty);
-                    if(x) {
-                        console.log("Blocked", e.url);
+                    if(Matcher_matchesAny(abp.blacklistMatcher, e.url, type, document.domain, thirdParty)) {
                         e.preventDefault();
                         nukeSingleElement(e.target);
                     }
